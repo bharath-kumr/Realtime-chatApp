@@ -21,7 +21,7 @@ const Chat = () => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) setUsername(storedUsername);
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
+    const interval = setInterval(fetchMessages, 8000);
     return () => clearInterval(interval);
   }, [room]);
 
