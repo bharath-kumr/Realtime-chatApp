@@ -28,7 +28,7 @@ const Chat = () => {
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://127.0.0.1:8000/api/messages/${room}/`, {
+      const response = await axios.get(`https://chatapp-2o81.onrender.com/api/messages/${room}/`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -43,7 +43,7 @@ const Chat = () => {
     if (!message.trim()) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://127.0.0.1:8000/api/send/', {
+      const response = await axios.post("https://chatapp-2o81.onrender.com/api/sent/", {
         room: room,
         content: message
       }, {

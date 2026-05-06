@@ -40,7 +40,7 @@ const VoiceRecorder = ({ room, onUploadSuccess }) => {
     formData.append('voice', audioBlob, 'voice.webm');
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/send-voice/', formData, {
+      const response = await axios.post("https://chatapp-2o81.onrender.com/api/register/", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
