@@ -75,7 +75,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "https://storied-klepon-5fc293.netlify.app",
+    "http://localhost:5173"
 ]
 
 REST_FRAMEWORK = {
