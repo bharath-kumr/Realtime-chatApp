@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-for-local-dev')
 
+<<<<<<< HEAD
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # ✅ FIXED - Added localhost and render domain
@@ -17,6 +18,13 @@ ALLOWED_HOSTS = [
     '.onrender.com',         # ✅ your Render backend
     'chatapp-2o81.onrender.com',  # ✅ your exact Render URL
     os.environ.get('ALLOWED_HOST', ''),
+=======
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.onrender.com',
+    'chatapp-2081.onrender.com',
+>>>>>>> 8b1ca51a41c0348b9df2e00b039ca17bdbdd7d6b
 ]
 
 INSTALLED_APPS = [
