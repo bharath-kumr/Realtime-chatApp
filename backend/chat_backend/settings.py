@@ -2,13 +2,22 @@
 
 import os 
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'your-secret-key'
-DEBUG = True
+SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-for-local-dev')
 
-ALLOWED_HOSTS = []
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# ✅ FIXED - Added localhost and render domain
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.onrender.com',         # ✅ your Render backend
+    'chatapp-2o81.onrender.com',  # ✅ your exact Render URL
+    os.environ.get('ALLOWED_HOST', ''),
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -23,10 +32,11 @@ INSTALLED_APPS = [
     'chat',
 ]
 
+# ✅ FIXED - CorsMiddleware must be FIRST
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',        # ✅ Moved to FIRST position
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -67,17 +77,36 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+# ✅ Added STATIC_ROOT for production
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
+# ✅ FIXED - Added localhost to CORS as well
 CORS_ALLOWED_ORIGINS = [
-    "https://storied-klepon-5fc293.netlify.app",
-    "http://localhost:5173"
+    "https://normal-chat-app.netlify.app",  # ✅ your Netlify frontend
+    "http://localhost:5173",                        # ✅ local React dev
+    "http://localhost:3000",                        # ✅ alternate local port
+    "http://127.0.0.1:5173",                       # ✅ alternate localhost format
 ]
+
+# ✅ Allow auth headers to pass through CORS
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -85,3 +114,9 @@ REST_FRAMEWORK = {
     ),
 }
 
+# ✅ JWT token lifetime settings
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+}

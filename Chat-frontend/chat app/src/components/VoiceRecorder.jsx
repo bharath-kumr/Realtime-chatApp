@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { FaMicrophone, FaStop, FaPaperPlane } from 'react-icons/fa';
 import axios from 'axios';
 
+const BASE_URL = "https://chatapp-2o81.onrender.com";
+
 const VoiceRecorder = ({ room, onUploadSuccess }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
@@ -40,16 +42,20 @@ const VoiceRecorder = ({ room, onUploadSuccess }) => {
     formData.append('voice', audioBlob, 'voice.webm');
 
     try {
-      const response = await axios.post("https://chatapp-2o81.onrender.com/api/register/", formData, {
+      // ✅ Fixed: correct voice upload endpoint
+      const response = await axios.post(`${BASE_URL}/api/voice-upload/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
       setAudioBlob(null);
-      onUploadSuccess(); // refresh messages
+      onUploadSuccess();
     } catch (error) {
       console.error('Upload failed', error);
+      if (error.response) {
+        alert(`Upload failed: ${JSON.stringify(error.response.data)}`);
+      }
     }
   };
 
@@ -75,6 +81,3 @@ const VoiceRecorder = ({ room, onUploadSuccess }) => {
 };
 
 export default VoiceRecorder;
-
-
-
