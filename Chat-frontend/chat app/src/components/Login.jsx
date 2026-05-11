@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import VoiceRecorder from './VoiceRecorder';
 import './Chat.css';
 
@@ -14,45 +15,71 @@ import {
 const BASE_URL = "https://chatapp-2o81.onrender.com";
 
 const Chat = () => {
+  const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [chatLog, setChatLog] = useState([]);
   const [room, setRoom] = useState('room1');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const chatBottomRef = useRef(null); // ✅ auto scroll ref
+  const chatBottomRef = useRef(null);
+  const intervalRef = useRef(null);
+  const hasRedirected = useRef(false); // ✅ prevents multiple redirects
 
   useEffect(() => {
-    // ✅ Get username from localStorage
+    const token = localStorage.getItem('token');
     const storedUsername = localStorage.getItem('username');
+
+    // ✅ Redirect to login if no token
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
     if (storedUsername) setUsername(storedUsername);
 
     fetchMessages();
-    const interval = setInterval(fetchMessages, 8000);
-    return () => clearInterval(interval);
+    intervalRef.current = setInterval(fetchMessages, 8000);
+
+    return () => clearInterval(intervalRef.current);
   }, [room]);
 
-  // ✅ Auto scroll to bottom when new messages arrive
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatLog]);
 
+  const handleUnauthorized = () => {
+    // ✅ Single function to handle 401 - no alert, no loop
+    clearInterval(intervalRef.current);
+    if (!hasRedirected.current) {
+      hasRedirected.current = true;
+      localStorage.clear();
+      navigate('/login');
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${BASE_URL}/api/messages/${room}/`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+
+      if (!token) {
+        handleUnauthorized();
+        return;
+      }
+
+      const response = await axios.get(
+        `${BASE_URL}/api/messages/${room}/`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 60000
         }
-      });
+      );
       setChatLog(response.data);
+
     } catch (error) {
       console.error('Error fetching messages', error);
-      // ✅ If token expired, redirect to login
       if (error.response?.status === 401) {
-        alert('Session expired. Please login again.');
-        localStorage.clear();
-        window.location.href = '/login';
+        handleUnauthorized(); // ✅ no alert, just redirect once
       }
     } finally {
       setLoading(false);
@@ -60,32 +87,38 @@ const Chat = () => {
   };
 
   const sendMessage = async () => {
-    if (!message.trim()) return; // ✅ prevent empty messages
+    if (!message.trim()) return;
     setSending(true);
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${BASE_URL}/api/sent/`, {
-        room: room,
-        content: message
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+
+      if (!token) {
+        handleUnauthorized();
+        return;
+      }
+
+      const response = await axios.post(
+        `${BASE_URL}/api/sent/`,
+        { room, content: message },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
         }
-      });
+      );
 
       if (response.status === 200 || response.status === 201) {
         setMessage('');
-        fetchMessages(); // ✅ refresh messages after sending
+        fetchMessages();
       }
 
     } catch (error) {
       console.error('Error sending message', error);
       if (error.response?.status === 401) {
-        alert('Session expired. Please login again.');
-        localStorage.clear();
-        window.location.href = '/login';
+        handleUnauthorized();
       } else {
         alert('Failed to send message. Please try again.');
       }
@@ -94,12 +127,17 @@ const Chat = () => {
     }
   };
 
-  // ✅ Send message on Enter key press
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const handleLogout = () => {
+    clearInterval(intervalRef.current);
+    localStorage.clear();
+    navigate('/login');
   };
 
   return (
@@ -108,28 +146,45 @@ const Chat = () => {
         <div className="profile"></div>
         <span>Chat Room: {room}</span>
 
-        {/* ✅ Room switcher */}
         <select
           value={room}
           onChange={(e) => setRoom(e.target.value)}
-          style={{ marginLeft: 'auto', padding: '4px 8px', borderRadius: '8px' }}
+          style={{
+            marginLeft: 'auto',
+            padding: '4px 8px',
+            borderRadius: '8px',
+            marginRight: '10px'
+          }}
         >
           <option value="room1">Room 1</option>
           <option value="room2">Room 2</option>
           <option value="room3">Room 3</option>
         </select>
+
+        {/* ✅ Logout button */}
+        <button
+          onClick={handleLogout}
+          style={{
+            background: '#ff4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '4px 10px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Logout
+        </button>
       </div>
 
       <div className="chat-box">
-
-        {/* ✅ Loading state */}
         {loading && (
           <p style={{ textAlign: 'center', color: '#aaa' }}>
             Loading messages...
           </p>
         )}
 
-        {/* ✅ Empty state */}
         {!loading && chatLog.length === 0 && (
           <p style={{ textAlign: 'center', color: '#aaa' }}>
             No messages yet. Say hello! 👋
@@ -139,15 +194,17 @@ const Chat = () => {
         {chatLog.map((msg, index) => (
           <div
             key={index}
-            className={`chat-message ${msg.sender === username ? 'align-right' : 'align-left'}`}
+            className={`chat-message ${
+              msg.sender === username ? 'align-right' : 'align-left'
+            }`}
           >
-            {/* ✅ Show sender name for other people's messages */}
             {msg.sender !== username && (
               <span className="sender-name">{msg.sender}</span>
             )}
 
-            <div className={`bubble ${msg.sender === username ? 'you' : 'other'}`}>
-              {/* ✅ Show voice message if exists */}
+            <div className={`bubble ${
+              msg.sender === username ? 'you' : 'other'
+            }`}>
               {msg.voice ? (
                 <audio controls src={`${BASE_URL}${msg.voice}`} />
               ) : (
@@ -155,7 +212,6 @@ const Chat = () => {
               )}
             </div>
 
-            {/* ✅ Show timestamp */}
             <span className="timestamp">
               {new Date(msg.timestamp).toLocaleTimeString([], {
                 hour: '2-digit',
@@ -165,7 +221,6 @@ const Chat = () => {
           </div>
         ))}
 
-        {/* ✅ Scroll anchor */}
         <div ref={chatBottomRef} />
       </div>
 
@@ -179,12 +234,12 @@ const Chat = () => {
           placeholder="Type a message..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown} // ✅ Enter to send
+          onKeyDown={handleKeyDown}
         />
         <button
           className="send-button"
           onClick={sendMessage}
-          disabled={sending} // ✅ prevent double send
+          disabled={sending}
         >
           {sending ? '...' : <FaPaperPlane />}
         </button>
